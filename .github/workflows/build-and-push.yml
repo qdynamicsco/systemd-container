@@ -1,5 +1,7 @@
 name: Build and Push Docker Image
 
+permissions: write-all
+
 on:
   push:
     branches:
@@ -9,6 +11,8 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    permissions:
+      packages: write
 
     steps:
     - name: Checkout repository
