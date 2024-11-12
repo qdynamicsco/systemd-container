@@ -4,8 +4,6 @@ permissions: write-all
 
 on:
   push:
-    branches:
-      - main
   workflow_dispatch:
 
 jobs:
@@ -34,6 +32,6 @@ jobs:
           context: .
           file: ./Dockerfile
           push: true
-          tags: ghcr.io/${{ github.repository }}/systemd-container:latest
+          tags: ghcr.io/${{ github.repository }}/systemd-container:${{ github.head_ref || github.ref_name }} 
           cache-from: type=gha
           cache-to: type=gha,mode=max
