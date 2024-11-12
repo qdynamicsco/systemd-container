@@ -6,7 +6,16 @@ RUN apt-get update && \
     apt-get install -y \
     systemd \
     systemd-sysv \
-    docker.io \
+    kmod \
+    ethtool \
+    xserver-xorg \
+    xserver-xorg-core \
+    xorg \
+    xinit \
+    x11-xserver-utils \
+    xterm \
+    lightdm \
+    # docker.io \
     iproute2 \
     openssh-server \
     sudo && \
