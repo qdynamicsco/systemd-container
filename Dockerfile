@@ -15,7 +15,8 @@ RUN apt-get update && \
     x11-xserver-utils \
     xterm \
     lightdm \
-    # docker.io \
+    xfce4 \
+    xfce4-goodies \
     iproute2 \
     openssh-server \
     sudo && \
@@ -23,8 +24,10 @@ RUN apt-get update && \
     rm -rf /var/lib/apt/lists/*
 
 # Create a user for login purposes and set password
-RUN useradd -m qd && echo "qd:qdpassword" | chpasswd && \
-    usermod -aG sudo qd
+RUN useradd -m qd && \
+    echo "qd:qdpassword" | chpasswd && \
+    usermod -aG sudo qd && \
+    usermod -aG nopasswdlogin qd
 
 # Enable getty on /dev/pts/0
 RUN systemctl enable getty@tty1.service
@@ -42,6 +45,11 @@ RUN cat /home/qd/.ssh/authorized_keys_alex >> /home/qd/.ssh/authorized_keys && \
     rm /home/qd/.ssh/authorized_keys_alex && \
     chown qd:qd /home/qd/.ssh/authorized_keys && \
     chmod 600 /home/qd/.ssh/authorized_keys
+
+# Set up LightDM to use xfce session
+RUN echo "[Seat:*]" > /etc/lightdm/lightdm.conf.d/60-xfce4.conf && \
+    echo "session-wrapper=/etc/X11/Xsession" >> /etc/lightdm/lightdm.conf.d/60-xfce4.conf && \
+    echo "user-session=xfce" >> /etc/lightdm/lightdm.conf.d/60-xfce4.conf
 
 # Set the default entrypoint to systemd
 STOPSIGNAL SIGRTMIN+3
