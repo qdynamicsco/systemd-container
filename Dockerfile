@@ -8,15 +8,7 @@ RUN apt-get update && \
     systemd-sysv \
     kmod \
     ethtool \
-    xserver-xorg \
-    xserver-xorg-core \
-    xorg \
-    xinit \
-    x11-xserver-utils \
-    xterm \
-    lightdm \
-    xfce4 \
-    xfce4-goodies \
+    ubuntu-desktop-minimal \
     iproute2 \
     openssh-server \
     sudo && \
@@ -26,11 +18,10 @@ RUN apt-get update && \
 # Create a user for login purposes and set password
 RUN useradd -m qd && \
     echo "qd:qdpassword" | chpasswd && \
-    usermod -aG sudo qd && \
-    usermod -aG nopasswdlogin qd
+    usermod -aG sudo qd
 
 # Enable getty on /dev/pts/0
-RUN systemctl enable getty@tty1.service
+# RUN systemctl enable getty@tty1.service
 
 # Set up SSH
 RUN mkdir /var/run/sshd && \
@@ -47,9 +38,9 @@ RUN cat /home/qd/.ssh/authorized_keys_alex >> /home/qd/.ssh/authorized_keys && \
     chmod 600 /home/qd/.ssh/authorized_keys
 
 # Set up LightDM to use xfce session
-RUN echo "[Seat:*]" > /etc/lightdm/lightdm.conf.d/60-xfce4.conf && \
-    echo "session-wrapper=/etc/X11/Xsession" >> /etc/lightdm/lightdm.conf.d/60-xfce4.conf && \
-    echo "user-session=xfce" >> /etc/lightdm/lightdm.conf.d/60-xfce4.conf
+# RUN echo "[Seat:*]" > /etc/lightdm/lightdm.conf.d/60-xfce4.conf && \
+#     echo "session-wrapper=/etc/X11/Xsession" >> /etc/lightdm/lightdm.conf.d/60-xfce4.conf && \
+#     echo "user-session=xfce" >> /etc/lightdm/lightdm.conf.d/60-xfce4.conf
 
 # Set the default entrypoint to systemd
 STOPSIGNAL SIGRTMIN+3
