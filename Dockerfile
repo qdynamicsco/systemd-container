@@ -20,6 +20,9 @@ RUN useradd -m qd && \
     echo "qd:qdpassword" | chpasswd && \
     usermod -aG sudo qd
 
+# Set the default shell for qd to bash
+RUN chsh -s /bin/bash qd
+
 # Enable getty on /dev/pts/0
 # RUN systemctl enable getty@tty1.service
 
@@ -36,6 +39,12 @@ RUN cat /home/qd/.ssh/authorized_keys_alex >> /home/qd/.ssh/authorized_keys && \
     rm /home/qd/.ssh/authorized_keys_alex && \
     chown qd:qd /home/qd/.ssh/authorized_keys && \
     chmod 600 /home/qd/.ssh/authorized_keys
+
+# Disable screen timeout and screen saver for Xfce
+RUN mkdir -p /home/qd/.config/xfce4/xfconf/xfce-perchannel-xml && \
+    echo '<?xml version="1.0" encoding="UTF-8"?>' > /home/qd/.config/xfce4/xfconf/xfce-perchannel-xml/xfce4-power-manager.xml && \
+    echo '<channel name="xfce4-power-manager" version="1.0"><property name="locking" type="bool" value="false"/><property name="dpms-on-ac-sleep" type="int" value="0"/><property name="dpms-on-ac-off" type="int" value="0"/></channel>' >> /home/qd/.config/xfce4/xfconf/xfce-perchannel-xml/xfce4-power-manager.xml && \
+    chown -R qd:qd /home/qd/.config
 
 # Set up LightDM to use xfce session
 # RUN echo "[Seat:*]" > /etc/lightdm/lightdm.conf.d/60-xfce4.conf && \
