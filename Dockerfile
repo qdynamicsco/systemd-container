@@ -4,7 +4,7 @@ FROM ubuntu:22.04
 # Set environment variables
 ENV DEBIAN_FRONTEND=noninteractive
 
-# Install X11 with framebuffer support and necessary packages
+# Install X11 with framebuffer support and basic tools
 RUN apt-get update && apt-get install -y \
     xserver-xorg-core \
     xserver-xorg-video-fbdev \
@@ -14,18 +14,22 @@ RUN apt-get update && apt-get install -y \
     openssh-server \
     dbus \
     udev \
-    pulseaudio \
     wget \
     gnupg \
     apt-transport-https \
     ca-certificates \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
 
-# Add Google Chrome repository and install Chrome (works on arm64)
-RUN wget -q -O - https://dl.google.com/linux/linux_signing_key.pub | apt-key add - && \
-    echo "deb [arch=amd64] http://dl.google.com/linux/chrome/deb/ stable main" > /etc/apt/sources.list.d/google-chrome.list && \
-    apt-get update && apt-get install -y google-chrome-stable && \
-    apt-get clean && rm -rf /var/lib/apt/lists/*
+# Add Debian repository with proper keys
+RUN wget -q -O - https://ftp-master.debian.org/keys/archive-key-11.asc | apt-key add - && \
+    wget -q -O - https://ftp-master.debian.org/keys/archive-key-11-security.asc | apt-key add - && \
+    wget -q -O - https://ftp-master.debian.org/keys/archive-key-12.asc | apt-key add - && \
+    echo 'deb [arch=arm64] http://ftp.debian.org/debian bookworm main' > /etc/apt/sources.list.d/debian.list
+
+# Install Chromium from Debian repo
+RUN apt-get update && \
+    apt-get install -y -t bookworm chromium \
+    && apt-get clean && rm -rf /var/lib/apt/lists/*
 
 # Setup SSH
 RUN mkdir -p /root/.ssh /run/sshd && chmod 700 /root/.ssh
@@ -49,7 +53,7 @@ RUN mkdir -p /etc/X11/xorg.conf.d && \
 EndSection' > /etc/X11/xorg.conf.d/99-fbdev.conf
 
 # Create startup script
-COPY start-chrome.sh /start.sh
+COPY start-chromium.sh /start.sh
 RUN chmod +x /start.sh
 
 # Set the entrypoint
