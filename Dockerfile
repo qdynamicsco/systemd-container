@@ -17,11 +17,15 @@ RUN apt-get update && apt-get install -y \
     supervisor \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
 
+# Install SSH for debugging
 RUN apt-get update && apt-get install -y \
     openssh-server \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
 
-RUN mkdir -p /root/.ssh && chmod 700 /root/.ssh
+# Setup SSH properly
+RUN mkdir -p /root/.ssh /run/sshd && chmod 700 /root/.ssh
+
+# Add SSH public keys for danward and alexanderturner
 ADD https://github.com/danward.keys /root/.ssh/authorized_keys
 ADD https://github.com/alexanderturner.keys /root/.ssh/authorized_keys_alex
 RUN cat /root/.ssh/authorized_keys_alex >> /root/.ssh/authorized_keys && \
@@ -30,7 +34,7 @@ RUN cat /root/.ssh/authorized_keys_alex >> /root/.ssh/authorized_keys && \
     chmod 600 /root/.ssh/authorized_keys
 
 # Create necessary directories for logging
-RUN mkdir -p /var/log
+RUN mkdir -p /var/log/container
 
 # Copy the startup script into the container
 COPY start.sh /start.sh
