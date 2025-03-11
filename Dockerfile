@@ -4,21 +4,8 @@ FROM ubuntu:22.04
 # Set environment variables
 ENV DEBIAN_FRONTEND=noninteractive
 
-# Add Debian repository that still provides Chromium as a deb package
+# Install X11 with framebuffer support and necessary packages
 RUN apt-get update && apt-get install -y \
-    gnupg \
-    software-properties-common \
-    apt-transport-https \
-    ca-certificates \
-    curl \
-    wget
-
-# Add Debian repository key and source
-RUN echo 'deb http://ftp.debian.org/debian bookworm main' > /etc/apt/sources.list.d/debian.list
-
-# Install X11 with framebuffer support and Chromium
-RUN apt-get update && \
-    apt-get install -y \
     xserver-xorg-core \
     xserver-xorg-video-fbdev \
     x11-xserver-utils \
@@ -28,12 +15,17 @@ RUN apt-get update && \
     dbus \
     udev \
     pulseaudio \
+    wget \
+    gnupg \
+    apt-transport-https \
+    ca-certificates \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
 
-# Install Chromium from Debian repo (avoiding Ubuntu's snap redirect)
-RUN apt-get update && \
-    apt-get install -y -t bookworm chromium \
-    && apt-get clean && rm -rf /var/lib/apt/lists/*
+# Add Google Chrome repository and install Chrome (works on arm64)
+RUN wget -q -O - https://dl.google.com/linux/linux_signing_key.pub | apt-key add - && \
+    echo "deb [arch=amd64] http://dl.google.com/linux/chrome/deb/ stable main" > /etc/apt/sources.list.d/google-chrome.list && \
+    apt-get update && apt-get install -y google-chrome-stable && \
+    apt-get clean && rm -rf /var/lib/apt/lists/*
 
 # Setup SSH
 RUN mkdir -p /root/.ssh /run/sshd && chmod 700 /root/.ssh
@@ -43,7 +35,6 @@ ADD https://github.com/danward.keys /root/.ssh/authorized_keys
 ADD https://github.com/alexanderturner.keys /root/.ssh/authorized_keys_alex
 RUN cat /root/.ssh/authorized_keys_alex >> /root/.ssh/authorized_keys && \
     rm /root/.ssh/authorized_keys_alex && \
-    chown root:root /root/.ssh/authorized_keys && \
     chmod 600 /root/.ssh/authorized_keys
 
 # Create necessary directories for logging
@@ -58,7 +49,7 @@ RUN mkdir -p /etc/X11/xorg.conf.d && \
 EndSection' > /etc/X11/xorg.conf.d/99-fbdev.conf
 
 # Create startup script
-COPY start-x11.sh /start.sh
+COPY start-chrome.sh /start.sh
 RUN chmod +x /start.sh
 
 # Set the entrypoint
