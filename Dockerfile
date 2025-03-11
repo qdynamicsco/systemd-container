@@ -15,7 +15,8 @@ RUN apk update && apk add --no-cache \
     eudev \
     acl \
     sudo \
-    input-utils \
+    libinput-tools \
+    evtest \
     font-noto \
     pulseaudio \
     bash \

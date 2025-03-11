@@ -24,7 +24,7 @@ ls -la /dev/fb* 2>/dev/null || log "No framebuffer devices found"
 log "Input devices:"
 ls -la /dev/input/* 2>/dev/null || log "No input devices found"
 log "Input device details:"
-input-events --help >/dev/null 2>&1 && input-events -l || log "input-events not available"
+evtest --version >/dev/null 2>&1 && log "$(ls -1 /dev/input/by-id/* 2>/dev/null || echo 'No input devices found')" || log "evtest not available"
 
 # Set proper permissions on input devices
 log "Setting permissions on input devices"
