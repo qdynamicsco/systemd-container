@@ -21,6 +21,14 @@ log "System information:"
 log "Kernel: $(uname -a)"
 log "Framebuffer devices:"
 ls -la /dev/fb* 2>/dev/null || log "No framebuffer devices found"
+log "Input devices:"
+ls -la /dev/input/* 2>/dev/null || log "No input devices found"
+log "Input device details:"
+input-events --help >/dev/null 2>&1 && input-events -l || log "input-events not available"
+
+# Set proper permissions on input devices
+log "Setting permissions on input devices"
+chmod 666 /dev/input/* 2>/dev/null || log "Failed to set permissions on input devices"
 
 # Create simple .xinitrc file
 cat > /root/.xinitrc << EOF
@@ -30,7 +38,7 @@ cat > /root/.xinitrc << EOF
 openbox &
 
 # Start Chromium in kiosk mode
-chromium --no-sandbox --kiosk "https://google.com" &
+chromium --no-sandbox --kiosk "about:blank" &
 
 # Keep the X session running
 exec tail -f /dev/null
@@ -38,9 +46,11 @@ EOF
 
 chmod +x /root/.xinitrc
 
-# Start X server with framebuffer
+# Start X server with framebuffer and input options
 log "Starting X server with framebuffer..."
-xinit /root/.xinitrc -- /usr/bin/X :0 -ac -nocursor -s 0 -dpms -logverbose 7 > /var/log/container/xorg.log 2>&1 &
+xinit /root/.xinitrc -- /usr/bin/X :0 -ac -nocursor -s 0 -dpms \
+    -allowMouseOpenFail \
+    -logverbose 7 > /var/log/container/xorg.log 2>&1 &
 XORG_PID=$!
 
 # Wait for X server to initialize
