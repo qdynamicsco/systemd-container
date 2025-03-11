@@ -38,7 +38,7 @@ cat > /root/.xinitrc << EOF
 openbox &
 
 # Start Chromium in kiosk mode
-chromium --no-sandbox --kiosk "about:blank" &
+chromium --no-sandbox --kiosk "https://google.com" &
 
 # Keep the X session running
 exec tail -f /dev/null
