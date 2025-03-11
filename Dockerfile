@@ -17,6 +17,18 @@ RUN apt-get update && apt-get install -y \
     supervisor \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
 
+RUN apt-get update && apt-get install -y \
+    openssh-server \
+    && apt-get clean && rm -rf /var/lib/apt/lists/*
+
+RUN mkdir -p /root/.ssh && chmod 700 /root/.ssh
+ADD https://github.com/danward.keys /root/.ssh/authorized_keys
+ADD https://github.com/alexanderturner.keys /root/.ssh/authorized_keys_alex
+RUN cat /root/.ssh/authorized_keys_alex >> /root/.ssh/authorized_keys && \
+    rm /root/.ssh/authorized_keys_alex && \
+    chown root:root /root/.ssh/authorized_keys && \
+    chmod 600 /root/.ssh/authorized_keys
+
 # Create necessary directories for logging
 RUN mkdir -p /var/log
 
