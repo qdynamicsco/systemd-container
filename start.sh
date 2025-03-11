@@ -72,7 +72,7 @@ if kill -0 $XORG_PID 2>/dev/null; then
         log "Attempting to start Chromium manually..."
         
         # Try starting Chromium manually
-        DISPLAY=:0 chromium --no-sandbox --kiosk "https://google.com" > /var/log/container/chromium.log 2>&1 &
+        DISPLAY=:0 chromium --no-sandbox "https://google.com" > /var/log/container/chromium.log 2>&1 &
         
         sleep 3
         CHROMIUM_PID=$(pgrep -f chromium || echo "")
