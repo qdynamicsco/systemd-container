@@ -1,11 +1,12 @@
-# Use Ubuntu as base image for ARM64 compatibility
-FROM ubuntu:22.04
+# Use Debian Bookworm as base image (ARM64 compatible)
+FROM debian:bookworm
 
 # Set environment variables
 ENV DEBIAN_FRONTEND=noninteractive
 
-# Install X11 with framebuffer support and basic tools
+# Install X11 with framebuffer support, Chromium, and SSH
 RUN apt-get update && apt-get install -y \
+    chromium \
     xserver-xorg-core \
     xserver-xorg-video-fbdev \
     x11-xserver-utils \
@@ -14,21 +15,8 @@ RUN apt-get update && apt-get install -y \
     openssh-server \
     dbus \
     udev \
-    wget \
-    gnupg \
-    apt-transport-https \
-    ca-certificates \
-    && apt-get clean && rm -rf /var/lib/apt/lists/*
-
-# Add Debian repository with proper keys
-RUN wget -q -O - https://ftp-master.debian.org/keys/archive-key-11.asc | apt-key add - && \
-    wget -q -O - https://ftp-master.debian.org/keys/archive-key-11-security.asc | apt-key add - && \
-    wget -q -O - https://ftp-master.debian.org/keys/archive-key-12.asc | apt-key add - && \
-    echo 'deb [arch=arm64] http://ftp.debian.org/debian bookworm main' > /etc/apt/sources.list.d/debian.list
-
-# Install Chromium from Debian repo
-RUN apt-get update && \
-    apt-get install -y -t bookworm chromium \
+    fonts-noto \
+    pulseaudio \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
 
 # Setup SSH
@@ -53,7 +41,7 @@ RUN mkdir -p /etc/X11/xorg.conf.d && \
 EndSection' > /etc/X11/xorg.conf.d/99-fbdev.conf
 
 # Create startup script
-COPY start-x11.sh /start.sh
+COPY start.sh /start.sh
 RUN chmod +x /start.sh
 
 # Set the entrypoint

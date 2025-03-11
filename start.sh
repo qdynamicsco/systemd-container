@@ -4,7 +4,7 @@ set -e
 # Create log directory
 mkdir -p /var/log/container
 
-# Simpler logging approach that doesn't require /dev/fd
+# Logging function
 log() {
     echo "$(date '+%Y-%m-%d %H:%M:%S') - $1" | tee -a /var/log/container/startup.log
 }
@@ -16,91 +16,69 @@ log "Starting SSH server..."
 mkdir -p /run/sshd
 /usr/sbin/sshd
 
-# Set Wayland runtime directory
-export XDG_RUNTIME_DIR=/tmp/weston
-mkdir -p $XDG_RUNTIME_DIR
-chmod 700 $XDG_RUNTIME_DIR
-
-# Log system info for diagnosis
+# System information
 log "System information:"
 log "Kernel: $(uname -a)"
-log "Available DRM devices:"
-ls -la /dev/dri/ 2>/dev/null || log "No DRM devices found"
 log "Framebuffer devices:"
 ls -la /dev/fb* 2>/dev/null || log "No framebuffer devices found"
 
-# Function to start Weston with different backends
-start_weston() {
-    local backend="$1"
-    log "Attempting to start Weston with $backend backend..."
-    
-    if [ "$backend" = "drm" ]; then
-        weston --backend=drm-backend.so --tty=1 --use-pixman=true --log=/var/log/container/weston.log &
-    elif [ "$backend" = "fbdev" ]; then
-        weston --backend=fbdev-backend.so --tty=1 --use-pixman=true --log=/var/log/container/weston.log &
-    elif [ "$backend" = "pixman" ]; then
-        weston --backend=wayland-backend.so --use-pixman=true --log=/var/log/container/weston.log &
-    else
-        return 1
-    fi
-    
-    return $?
-}
+# Create simple .xinitrc file
+cat > /root/.xinitrc << EOF
+#!/bin/sh
 
-# Try different backends in order of preference
-for backend in drm fbdev pixman; do
-    start_weston "$backend"
-    WESTON_PID=$!
-    
-    # Wait for Weston to initialize
-    log "Waiting for Weston to initialize..."
-    sleep 5
-    
-    # Check if Weston is running
-    if kill -0 $WESTON_PID 2>/dev/null; then
-        log "Weston is running with $backend backend, PID $WESTON_PID"
-        WESTON_STARTED=true
-        break
-    else
-        log "Weston failed to start with $backend backend, trying next..."
-    fi
-done
+# Start a minimal window manager
+openbox &
 
-if [ "$WESTON_STARTED" = "true" ]; then
-    # Export Wayland display
-    export WAYLAND_DISPLAY=wayland-0
+# Start Chromium in kiosk mode
+chromium --no-sandbox --kiosk "https://google.com" &
+
+# Keep the X session running
+exec tail -f /dev/null
+EOF
+
+chmod +x /root/.xinitrc
+
+# Start X server with framebuffer
+log "Starting X server with framebuffer..."
+xinit /root/.xinitrc -- /usr/bin/X :0 -ac -nocursor -s 0 -dpms -logverbose 7 > /var/log/container/xorg.log 2>&1 &
+XORG_PID=$!
+
+# Wait for X server to initialize
+log "Waiting for X server to initialize..."
+sleep 5
+
+# Check if X server is running
+if kill -0 $XORG_PID 2>/dev/null; then
+    log "X server is running with PID $XORG_PID"
     
-    # Start Chromium with expanded parameters and logging
-    log "Starting Chromium..."
-    chromium-browser \
-        --ozone-platform=wayland \
-        --no-sandbox \
-        --disable-gpu-sandbox \
-        --ignore-gpu-blocklist \
-        --enable-gpu-rasterization \
-        --disable-dev-shm-usage \
-        --disable-software-rasterizer \
-        --disable-gpu-watchdog \
-        --autoplay-policy=no-user-gesture-required \
-        --disable-features=UserAgentClientHint \
-        --kiosk \
-        "about:blank" \
-        > /var/log/container/chromium.log 2>&1 &
-    CHROMIUM_PID=$!
-    
-    # Check if Chromium started successfully
+    # Check for Chromium process
     sleep 3
-    if kill -0 $CHROMIUM_PID 2>/dev/null; then
-        log "Chromium started successfully with PID $CHROMIUM_PID"
+    CHROMIUM_PID=$(pgrep -f chromium || echo "")
+    
+    if [ -n "$CHROMIUM_PID" ]; then
+        log "Chromium is running with PID $CHROMIUM_PID"
     else
-        log "ERROR: Chromium failed to start"
-        log "Chromium log output:"
-        cat /var/log/container/chromium.log | tee -a /var/log/container/startup.log
+        log "WARNING: Chromium doesn't appear to be running"
+        log "Attempting to start Chromium manually..."
+        
+        # Try starting Chromium manually
+        DISPLAY=:0 chromium --no-sandbox --kiosk "about:blank" > /var/log/container/chromium.log 2>&1 &
+        
+        sleep 3
+        CHROMIUM_PID=$(pgrep -f chromium || echo "")
+        
+        if [ -n "$CHROMIUM_PID" ]; then
+            log "Chromium started manually with PID $CHROMIUM_PID"
+        else
+            log "ERROR: Failed to start Chromium"
+            log "Chromium log output:"
+            cat /var/log/container/chromium.log | tee -a /var/log/container/startup.log
+        fi
     fi
 else
-    log "ERROR: All Weston backends failed to start"
-    log "Weston log output:"
-    cat /var/log/container/weston.log | tee -a /var/log/container/startup.log
+    log "ERROR: X server failed to start"
+    log "X server log output:"
+    cat /var/log/container/xorg.log | tee -a /var/log/container/startup.log
 fi
 
 log "Container processes ready, running continuously to maintain SSH access"
@@ -108,12 +86,15 @@ log "Container processes ready, running continuously to maintain SSH access"
 # Function to handle termination
 cleanup() {
     log "Stopping services..."
-    if [[ -n "$CHROMIUM_PID" ]]; then
+    CHROMIUM_PID=$(pgrep -f chromium || echo "")
+    if [ -n "$CHROMIUM_PID" ]; then
         kill $CHROMIUM_PID 2>/dev/null || true
     fi
-    if [[ -n "$WESTON_PID" ]]; then
-        kill $WESTON_PID 2>/dev/null || true
+    
+    if [ -n "$XORG_PID" ]; then
+        kill $XORG_PID 2>/dev/null || true
     fi
+    
     /usr/sbin/service ssh stop
     log "Shutdown complete"
     exit
@@ -125,12 +106,14 @@ trap cleanup SIGINT SIGTERM
 # Keep container running to maintain SSH access for debugging
 while true; do
     sleep 60
+    
     # Check if services are still running
-    if [[ -n "$WESTON_PID" ]] && ! kill -0 $WESTON_PID 2>/dev/null; then
-        log "WARNING: Weston process is no longer running"
+    if [ -n "$XORG_PID" ] && ! kill -0 $XORG_PID 2>/dev/null; then
+        log "WARNING: X server process is no longer running"
     fi
     
-    if [[ -n "$CHROMIUM_PID" ]] && ! kill -0 $CHROMIUM_PID 2>/dev/null; then
+    CHROMIUM_PID=$(pgrep -f chromium || echo "")
+    if [ -z "$CHROMIUM_PID" ]; then
         log "WARNING: Chromium process is no longer running"
     fi
 done
