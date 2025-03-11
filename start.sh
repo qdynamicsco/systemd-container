@@ -24,7 +24,7 @@ export WAYLAND_DISPLAY=wayland-0
 
 # Start Chromium with Wayland backend
 echo "Starting Chromium..."
-chromium --ozone-platform=wayland --no-sandbox &
+chromium-browser --ozone-platform=wayland --no-sandbox &
 CHROMIUM_PID=$!
 
 # Function to handle termination
