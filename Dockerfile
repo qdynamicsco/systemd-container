@@ -23,8 +23,7 @@ RUN apk update && apk add --no-cache \
     tzdata
 
 # Setup input permissions
-RUN addgroup -S input && \
-    addgroup root input && \
+RUN addgroup root input && \
     addgroup root video && \
     addgroup root tty
 
