@@ -14,7 +14,7 @@ log "Starting container..."
 # Start SSH server
 log "Starting SSH server..."
 mkdir -p /run/sshd
-/usr/sbin/sshd
+/usr/sbin/sshd -D &
 
 # System information
 log "System information:"
@@ -105,7 +105,7 @@ cleanup() {
         kill $XORG_PID 2>/dev/null || true
     fi
     
-    /usr/sbin/service ssh stop
+    killall sshd
     log "Shutdown complete"
     exit
 }
