@@ -4,9 +4,21 @@ FROM ubuntu:22.04
 # Set environment variables
 ENV DEBIAN_FRONTEND=noninteractive
 
-# Install X11 with framebuffer support and Chromium
+# Add Debian repository that still provides Chromium as a deb package
 RUN apt-get update && apt-get install -y \
-    chromium-browser \
+    gnupg \
+    software-properties-common \
+    apt-transport-https \
+    ca-certificates \
+    curl \
+    wget
+
+# Add Debian repository key and source
+RUN echo 'deb http://ftp.debian.org/debian bookworm main' > /etc/apt/sources.list.d/debian.list
+
+# Install X11 with framebuffer support and Chromium
+RUN apt-get update && \
+    apt-get install -y \
     xserver-xorg-core \
     xserver-xorg-video-fbdev \
     x11-xserver-utils \
@@ -16,6 +28,11 @@ RUN apt-get update && apt-get install -y \
     dbus \
     udev \
     pulseaudio \
+    && apt-get clean && rm -rf /var/lib/apt/lists/*
+
+# Install Chromium from Debian repo (avoiding Ubuntu's snap redirect)
+RUN apt-get update && \
+    apt-get install -y -t bookworm chromium \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
 
 # Setup SSH
