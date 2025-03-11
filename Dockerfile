@@ -53,7 +53,7 @@ RUN mkdir -p /etc/X11/xorg.conf.d && \
 EndSection' > /etc/X11/xorg.conf.d/99-fbdev.conf
 
 # Create startup script
-COPY start-chromium.sh /start.sh
+COPY start-x11.sh /start.sh
 RUN chmod +x /start.sh
 
 # Set the entrypoint
