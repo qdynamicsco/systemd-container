@@ -6,7 +6,6 @@ mkdir -p /var/log/container
 
 # Simpler logging approach that doesn't require /dev/fd
 log() {
-    echo "$(date '+%Y-%m-%d %H:%M:%S') - $1"
     echo "$(date '+%Y-%m-%d %H:%M:%S') - $1" | tee -a /var/log/container/startup.log
 }
 
@@ -30,19 +29,44 @@ ls -la /dev/dri/ 2>/dev/null || log "No DRM devices found"
 log "Framebuffer devices:"
 ls -la /dev/fb* 2>/dev/null || log "No framebuffer devices found"
 
-# Start Weston Wayland compositor in the background
-log "Starting Weston..."
-weston --backend=drm-backend.so --tty=1 --use-pixman=false --log=/var/log/container/weston.log &
-WESTON_PID=$!
-
-# Wait for Weston to initialize
-log "Waiting for Weston to initialize..."
-sleep 5
-
-# Check if Weston is running
-if kill -0 $WESTON_PID 2>/dev/null; then
-    log "Weston is running with PID $WESTON_PID"
+# Function to start Weston with different backends
+start_weston() {
+    local backend="$1"
+    log "Attempting to start Weston with $backend backend..."
     
+    if [ "$backend" = "drm" ]; then
+        weston --backend=drm-backend.so --tty=1 --use-pixman=true --log=/var/log/container/weston.log &
+    elif [ "$backend" = "fbdev" ]; then
+        weston --backend=fbdev-backend.so --tty=1 --use-pixman=true --log=/var/log/container/weston.log &
+    elif [ "$backend" = "pixman" ]; then
+        weston --backend=wayland-backend.so --use-pixman=true --log=/var/log/container/weston.log &
+    else
+        return 1
+    fi
+    
+    return $?
+}
+
+# Try different backends in order of preference
+for backend in drm fbdev pixman; do
+    start_weston "$backend"
+    WESTON_PID=$!
+    
+    # Wait for Weston to initialize
+    log "Waiting for Weston to initialize..."
+    sleep 5
+    
+    # Check if Weston is running
+    if kill -0 $WESTON_PID 2>/dev/null; then
+        log "Weston is running with $backend backend, PID $WESTON_PID"
+        WESTON_STARTED=true
+        break
+    else
+        log "Weston failed to start with $backend backend, trying next..."
+    fi
+done
+
+if [ "$WESTON_STARTED" = "true" ]; then
     # Export Wayland display
     export WAYLAND_DISPLAY=wayland-0
     
@@ -70,9 +94,13 @@ if kill -0 $WESTON_PID 2>/dev/null; then
         log "Chromium started successfully with PID $CHROMIUM_PID"
     else
         log "ERROR: Chromium failed to start"
+        log "Chromium log output:"
+        cat /var/log/container/chromium.log | tee -a /var/log/container/startup.log
     fi
 else
-    log "ERROR: Weston failed to start"
+    log "ERROR: All Weston backends failed to start"
+    log "Weston log output:"
+    cat /var/log/container/weston.log | tee -a /var/log/container/startup.log
 fi
 
 log "Container processes ready, running continuously to maintain SSH access"

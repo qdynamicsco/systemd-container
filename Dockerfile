@@ -4,7 +4,7 @@ FROM ubuntu:22.04
 # Set environment variables to prevent interactive prompts during package installation
 ENV DEBIAN_FRONTEND=noninteractive
 
-# Install necessary packages
+# Install necessary packages including mesa drivers for ARM64
 RUN apt-get update && apt-get install -y \
     chromium-browser \
     weston \
@@ -14,7 +14,14 @@ RUN apt-get update && apt-get install -y \
     libgles2 \
     mesa-utils \
     dbus \
-    supervisor \
+    mesa-va-drivers \
+    mesa-vdpau-drivers \
+    mesa-vulkan-drivers \
+    libdrm2 \
+    libdrm-common \
+    libgbm1 \
+    libglx-mesa0 \
+    libegl-mesa0 \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
 
 # Install SSH for debugging
