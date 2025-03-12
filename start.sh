@@ -1,6 +1,10 @@
 #!/bin/bash
 set -e
 
+# Define default URL with fallback
+DEFAULT_URL="https://google.com"
+KIOSK_URL="${KIOSK_URL:-$DEFAULT_URL}"
+
 # Create log directory
 mkdir -p /var/log/container
 
@@ -10,6 +14,7 @@ log() {
 }
 
 log "Starting container..."
+log "Using URL: $KIOSK_URL"
 
 # Start SSH server
 log "Starting SSH server..."
@@ -38,7 +43,7 @@ cat > /root/.xinitrc << EOF
 openbox &
 
 # Start Chromium in kiosk mode
-chromium --no-sandbox --kiosk "https://google.com" &
+chromium --no-sandbox --kiosk "${KIOSK_URL}" &
 
 # Keep the X session running
 exec tail -f /dev/null
@@ -72,7 +77,7 @@ if kill -0 $XORG_PID 2>/dev/null; then
         log "Attempting to start Chromium manually..."
         
         # Try starting Chromium manually
-        DISPLAY=:0 chromium --no-sandbox "https://google.com" > /var/log/container/chromium.log 2>&1 &
+        DISPLAY=:0 chromium --no-sandbox "${KIOSK_URL}" > /var/log/container/chromium.log 2>&1 &
         
         sleep 3
         CHROMIUM_PID=$(pgrep -f chromium || echo "")
