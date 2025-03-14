@@ -1,0 +1,38 @@
+#!/bin/sh
+
+# Start a minimal window manager
+openbox &
+
+# Start Chromium in kiosk mode with all necessary flags
+# GPU acceleration flags included
+chromium --no-sandbox \
+--kiosk \
+--disable-translate \
+--disable-features=TranslateUI \
+--disable-pepper-flash-plugin \
+--disable-cloud-import \
+--disable-signin-promo \
+--disable-sync \
+--disable-default-apps \
+--disable-infobars \
+--disable-session-crashed-bubble \
+--disable-restore-session-state \
+--test-type \
+--ignore-certificate-errors \
+--start-maximized \
+--user-data-dir=/tmp/chrome \
+--no-first-run \
+--disable-crash-reporter \
+--disable-breakpad \
+--noerrdialogs \
+--enable-gpu \
+--enable-hardware-overlays \
+--enable-features=VaapiVideoDecoder \
+--ignore-gpu-blocklist \
+--use-gl=egl \
+--enable-gpu-rasterization \
+--enable-zero-copy \
+"${KIOSK_URL}" &
+
+# Keep the X session running
+exec tail -f /dev/null

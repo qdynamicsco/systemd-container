@@ -1,12 +1,8 @@
 #!/bin/bash
-set -e
-
-# Define default URL with fallback
-DEFAULT_URL="https://google.com"
-KIOSK_URL="${KIOSK_URL:-$DEFAULT_URL}"
-
-# Create log directory
-mkdir -p /var/log/container
+# Create required runtime directories
+mkdir -p /var/log/container/ /tmp/.X11-unix /run/sshd /run/dbus /tmp/.cache/fontconfig /tmp/chrome /tmp/xdg
+chmod 1777 /tmp/.X11-unix
+chmod 755 /run/dbus
 
 # Logging function
 log() {
@@ -14,12 +10,24 @@ log() {
 }
 
 log "Starting container..."
-log "Using URL: $KIOSK_URL"
+log "Kiosk URL: ${KIOSK_URL}"
+
+# Check for GPU
+if [ -d "/dev/dri" ]; then
+    log "GPU device detected at /dev/dri"
+elif [ -d "/dev/nvidia0" ]; then
+    log "NVIDIA GPU detected"
+else
+    log "No GPU devices detected, using software rendering"
+fi
+
+# Start dbus
+log "Starting DBus daemon..."
+dbus-daemon --system --fork --nopidfile
 
 # Start SSH server
 log "Starting SSH server..."
-mkdir -p /run/sshd
-/usr/sbin/sshd
+/usr/sbin/sshd -e
 
 # System information
 log "System information:"
@@ -28,34 +36,16 @@ log "Framebuffer devices:"
 ls -la /dev/fb* 2>/dev/null || log "No framebuffer devices found"
 log "Input devices:"
 ls -la /dev/input/* 2>/dev/null || log "No input devices found"
-log "Input device details:"
-input-events --help >/dev/null 2>&1 && input-events -l || log "input-events not available"
 
-# Set proper permissions on input devices
-log "Setting permissions on input devices"
-chmod 666 /dev/input/* 2>/dev/null || log "Failed to set permissions on input devices"
-
-# Create simple .xinitrc file
-cat > /root/.xinitrc << EOF
-#!/bin/sh
-
-# Start a minimal window manager
-openbox &
-
-# Start Chromium in kiosk mode
-chromium --no-sandbox --kiosk "${KIOSK_URL}" &
-
-# Keep the X session running
-exec tail -f /dev/null
-EOF
-
-chmod +x /root/.xinitrc
+# Pre-cache font configuration
+log "Generating font cache..."
+fc-cache -s -v > /dev/null 2>&1 || log "Font cache generation failed"
 
 # Start X server with framebuffer and input options
 log "Starting X server with framebuffer..."
 xinit /root/.xinitrc -- /usr/bin/X :0 -ac -nocursor -s 0 -dpms \
     -allowMouseOpenFail \
-    -logverbose 7 > /var/log/container/xorg.log 2>&1 &
+    -logverbose 7 > /var/log/container/xorg.log  2>&1 &
 XORG_PID=$!
 
 # Wait for X server to initialize
@@ -67,7 +57,7 @@ if kill -0 $XORG_PID 2>/dev/null; then
     log "X server is running with PID $XORG_PID"
     
     # Check for Chromium process
-    sleep 3
+    sleep 5
     CHROMIUM_PID=$(pgrep -f chromium || echo "")
     
     if [ -n "$CHROMIUM_PID" ]; then
@@ -76,8 +66,32 @@ if kill -0 $XORG_PID 2>/dev/null; then
         log "WARNING: Chromium doesn't appear to be running"
         log "Attempting to start Chromium manually..."
         
-        # Try starting Chromium manually
-        DISPLAY=:0 chromium --no-sandbox "${KIOSK_URL}" > /var/log/container/chromium.log 2>&1 &
+        # Try starting Chromium manually with better options
+        DISPLAY=:0 chromium --no-sandbox \
+            --kiosk \
+            --disable-translate \
+            --disable-features=TranslateUI \
+            --disable-pepper-flash-plugin \
+            --disable-cloud-import \
+            --disable-signin-promo \
+            --disable-sync \
+            --disable-default-apps \
+            --disable-infobars \
+            --disable-session-crashed-bubble \
+            --disable-restore-session-state \
+            --test-type \
+            --ignore-certificate-errors \
+            --start-maximized \
+            --user-data-dir=/tmp/chrome \
+            --no-first-run \
+            --disable-crash-reporter \
+            --disable-breakpad \
+            --enable-gpu \
+            --enable-hardware-overlays \
+            --ignore-gpu-blocklist \
+            --use-gl=egl \
+            --enable-gpu-rasterization \
+            "${KIOSK_URL}" > /var/log/container/chromium.log 2>&1 &
         
         sleep 3
         CHROMIUM_PID=$(pgrep -f chromium || echo "")
@@ -96,6 +110,13 @@ else
     cat /var/log/container/xorg.log | tee -a /var/log/container/startup.log
 fi
 
+# Check GPU status if Chromium is running
+if [ -n "$CHROMIUM_PID" ]; then
+    sleep 10
+    log "Checking GPU status..."
+    DISPLAY=:0 glxinfo | grep "OpenGL renderer" | tee -a /var/log/container/startup.log || log "Unable to get GPU info"
+fi
+
 log "Container processes ready, running continuously to maintain SSH access"
 
 # Function to handle termination
@@ -110,7 +131,8 @@ cleanup() {
         kill $XORG_PID 2>/dev/null || true
     fi
     
-    /usr/sbin/service ssh stop
+    pkill -f dbus-daemon || true
+    pkill -f sshd || true
     log "Shutdown complete"
     exit
 }
