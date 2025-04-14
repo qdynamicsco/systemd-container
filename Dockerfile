@@ -27,7 +27,7 @@ RUN chsh -s /bin/bash qd
 # RUN systemctl enable getty@tty1.service
 
 # Set up SSH
-RUN mkdir /var/run/sshd && \
+RUN mkdir -p /var/run/sshd && \
     mkdir -p /home/qd/.ssh && \
     chown qd:qd /home/qd/.ssh && \
     chmod 700 /home/qd/.ssh
