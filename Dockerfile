@@ -8,7 +8,7 @@ ENV DISPLAY=:0
 ENV HOME=/root
 ENV XDG_RUNTIME_DIR=/tmp/xdg
 
-# Install necessary packages for X11, Chromium, Openbox, and hardware acceleration
+# Install necessary packages, then remove unnecessary ones
 RUN apt-get update && apt-get install -y \
     chromium \
     xserver-xorg-core \
@@ -26,6 +26,8 @@ RUN apt-get update && apt-get install -y \
     vainfo \
     python3-xdg \
     unclutter \
+    --no-install-recommends \
+    && apt-get purge -y --auto-remove system-config-printer at-spi2-core \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
 
 # Add user to necessary groups for hardware access
