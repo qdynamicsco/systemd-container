@@ -7,7 +7,7 @@ ENV DEBIAN_FRONTEND=noninteractive
 # Set version for nerdctl for consistency
 ARG NERDCTL_VERSION="2.2.0"
 
-# 1. Install dependencies: containerd, SSH, curl, and now Iptables for nerdctl networking
+# 1. Install dependencies: now includes gettext-base for envsubst
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
     ca-certificates \
@@ -16,16 +16,16 @@ RUN apt-get update && \
     lsb-release \
     openssh-server \
     iptables \
+    iproute2 \
+    gettext-base \
     && \
-    # Add Docker's official GPG key and repository
+
     install -m 0755 -d /etc/apt/keyrings && \
     curl -fsSL https://download.docker.com/linux/ubuntu/gpg | gpg --dearmor -o /etc/apt/keyrings/docker.gpg && \
     chmod a+r /etc/apt/keyrings/docker.gpg && \
     echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" | tee /etc/apt/sources.list.d/docker.list > /dev/null && \
-    # Install containerd
     apt-get update && \
     apt-get install -y containerd.io && \
-    # Clean up
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
@@ -39,22 +39,24 @@ RUN echo "Configuring SSH..." && \
     sed -i 's/#PasswordAuthentication yes/PasswordAuthentication no/' /etc/ssh/sshd_config && \
     ssh-keygen -A
 
-# 3. Install nerdctl (the "full" version includes CNI plugins)
+# 3. Add the website template files to a directory in the image
+COPY www/ /var/www/
+
+# 4. Install nerdctl
 RUN curl -fsSL "https://github.com/containerd/nerdctl/releases/download/v${NERDCTL_VERSION}/nerdctl-full-${NERDCTL_VERSION}-linux-amd64.tar.gz" \
     | tar -C /usr/local -xz
 
-# 4. Create a default CNI network configuration for nerdctl to use
+# 5. CNI config
 RUN mkdir -p /etc/cni/net.d && \
     echo '{ "cniVersion": "1.0.0", "name": "nerdctl-bridge", "type": "bridge", "bridge": "cni0", "isGateway": true, "ipMasq": true, "ipam": { "type": "host-local", "subnet": "10.4.0.0/24", "routes": [ { "dst": "0.0.0.0/0" } ] } }' \
     > /etc/cni/net.d/10-nerdctl-bridge.conf
 
-# 5. Copy the entrypoint script and make it executable
+# 6. Copy entrypoint
 COPY entrypoint.sh /usr/local/bin/entrypoint.sh
 RUN chmod +x /usr/local/bin/entrypoint.sh
 
-# 6. Set the entrypoint
+# 7. Set entrypoint
 ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
 
-# Expose ports for inner nginx and SSH
-EXPOSE 8080
+EXPOSE 80
 EXPOSE 22
