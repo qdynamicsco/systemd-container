@@ -1,5 +1,9 @@
 #!/bin/bash
 
+# Cleanup old state (if restarted)
+rm -f /tmp/.X0-lock
+rm -rf /tmp/xdg
+
 # Create required runtime directories
 mkdir -p /run/sshd
 mkdir -p /run/dbus
