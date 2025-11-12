@@ -21,8 +21,7 @@ RUN apt-get update && apt-get install -y \
     fonts-noto \
     mesa-utils \
     libgl1-mesa-dri \
-    intel-media-va-driver \
-    i965-va-driver \
+    $( [ "$(dpkg --print-architecture)" = "amd64" ] && echo "intel-media-va-driver i965-va-driver" ) \
     mesa-va-drivers \
     mesa-vulkan-drivers \
     vainfo \
