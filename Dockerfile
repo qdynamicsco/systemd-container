@@ -60,6 +60,7 @@ RUN sed -i 's/#PermitRootLogin prohibit-password/PermitRootLogin yes/' /etc/ssh/
 # Openbox Configuration for Kiosk Mode
 RUN mkdir -p /root/.config/openbox
 COPY autostart /root/.config/openbox/autostart
+RUN chmod +x /root/.config/openbox/autostart
 COPY rc.xml /root/.config/openbox/rc.xml
 
 # Xinit Configuration
