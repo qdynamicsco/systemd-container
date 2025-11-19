@@ -46,18 +46,18 @@ echo "Containerd is running!"
 NGINX_IMAGE="docker.io/library/nginx:latest"
 CHROME_IMAGE="ghcr.io/qdynamicsco/systemd-container/systemd-container:min-chrome"
 
-echo "Pulling inner containers using 'native' snapshotter..."
-nerdctl --snapshotter=native pull $NGINX_IMAGE
-nerdctl --snapshotter=native pull $CHROME_IMAGE
+echo "Pulling inner containers..."
+nerdctl pull $NGINX_IMAGE
+nerdctl pull $CHROME_IMAGE
 
 # 5. Start inner containers
-echo "Starting inner containers using 'native' snapshotter..."
-nerdctl --snapshotter=native run -d --name nginx \
+echo "Starting inner containers..."
+nerdctl run -d --name nginx -p 80:80 \
   --mount type=bind,source=/var/www,target=/usr/share/nginx/html,readonly \
   $NGINX_IMAGE
 
 # Chrome container is unchanged
-nerdctl --snapshotter=native run -d --name chrome-ui --privileged -v /dev:/dev -e KIOSK_URL=http://nginx:80 $CHROME_IMAGE
+nerdctl run -d --name chrome-ui --privileged -v /dev:/dev -e KIOSK_URL=http://nginx:80 $CHROME_IMAGE
 
 echo "Inner containers started. Listing them with 'nerdctl ps':"
 nerdctl ps -a

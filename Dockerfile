@@ -12,10 +12,12 @@ RUN apt-get update && \
     apt-get install -y --no-install-recommends \
     ca-certificates \
     curl \
+    nano \
     gnupg \
     lsb-release \
     openssh-server \
     iptables \
+    nftables \
     iproute2 \
     gettext-base \
     && \
@@ -46,16 +48,11 @@ COPY www/ /var/www/
 RUN curl -fsSL "https://github.com/containerd/nerdctl/releases/download/v${NERDCTL_VERSION}/nerdctl-full-${NERDCTL_VERSION}-linux-amd64.tar.gz" \
     | tar -C /usr/local -xz
 
-# 5. CNI config
-RUN mkdir -p /etc/cni/net.d && \
-    echo '{ "cniVersion": "1.0.0", "name": "nerdctl-bridge", "type": "bridge", "bridge": "cni0", "isGateway": true, "ipMasq": true, "ipam": { "type": "host-local", "subnet": "10.4.0.0/24", "routes": [ { "dst": "0.0.0.0/0" } ] } }' \
-    > /etc/cni/net.d/10-nerdctl-bridge.conf
-
-# 6. Copy entrypoint
+# 5. Copy entrypoint
 COPY entrypoint.sh /usr/local/bin/entrypoint.sh
 RUN chmod +x /usr/local/bin/entrypoint.sh
 
-# 7. Set entrypoint
+# 6. Set entrypoint
 ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
 
 EXPOSE 80
