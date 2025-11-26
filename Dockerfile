@@ -58,10 +58,11 @@ RUN cat /root/.ssh/authorized_keys_alex >> /root/.ssh/authorized_keys && \
 RUN sed -i 's/#PermitRootLogin prohibit-password/PermitRootLogin yes/' /etc/ssh/sshd_config
 
 # Openbox Configuration for Kiosk Mode
-RUN mkdir -p /root/.config/openbox
-COPY autostart /root/.config/openbox/autostart
-RUN chmod +x /root/.config/openbox/autostart
-COPY rc.xml /root/.config/openbox/rc.xml
+# Moved to system-wide config (/etc/xdg/openbox) to keep /root/.config reserved for AppImage
+RUN mkdir -p /etc/xdg/openbox
+COPY autostart /etc/xdg/openbox/autostart
+RUN chmod +x /etc/xdg/openbox/autostart
+COPY rc.xml /etc/xdg/openbox/rc.xml
 
 # Xinit Configuration
 COPY xinitrc /root/.xinitrc
