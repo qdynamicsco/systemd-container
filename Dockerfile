@@ -36,6 +36,7 @@ RUN apt-get update && apt-get install -y \
     libatk-bridge2.0-0 \
     libgtk-3-0 \
     libasound2 \
+    alsa-utils \
     --no-install-recommends \
     && apt-get purge -y --auto-remove system-config-printer at-spi2-core \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
@@ -45,7 +46,7 @@ ADD ${APPIMAGE_URL} ${APPIMAGE_PATH}
 RUN chmod +x ${APPIMAGE_PATH}
 
 # Add user to necessary groups for hardware access
-RUN usermod -a -G video,render,input root
+RUN usermod -a -G video,render,input,audio root
 
 # SSH Configuration
 RUN mkdir -p /root/.ssh && chmod 700 /root/.ssh
